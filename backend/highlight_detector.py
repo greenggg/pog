@@ -1,10 +1,35 @@
 import whisper
+import numpy as np
+import torch
+import os
 
 model = whisper.load_model("base")
 
-def detect_highlights(file_path):
-    result = model.transcribe(file_path)
-    segments = result['segments']
+def detect_highlights(file_path, update_callback=None):
+    if update_callback:
+        update_callback(0.1)
+
+    # Defensive fallback: convert audio if needed
+    try:
+        result = model.transcribe(file_path)
+    except TypeError as e:
+        # Manually process audio if transcribe fails due to type issues
+        audio = whisper.load_audio(file_path)
+        if isinstance(audio, list):
+            audio = np.array(audio)
+        mel = whisper.log_mel_spectrogram(audio).to(model.device)
+        options = whisper.DecodingOptions()
+        result = whisper.decode(model, mel, options)
+
+        # Fake segment for compatibility if needed
+        result = {"segments": [{
+            "start": 0,
+            "end": len(audio) / whisper.audio.SAMPLE_RATE,
+            "text": result.text,
+            "avg_logprob": -1.0
+        }]}
+
+    segments = result.get('segments', [])
     highlights = []
 
     seen_texts = set()
@@ -20,7 +45,6 @@ def detect_highlights(file_path):
         end = seg['end']
         text = seg['text'].strip().lower()
 
-        # Basic filters
         if start < skip_initial:
             continue
         if (end - start) < min_length:
@@ -32,7 +56,6 @@ def detect_highlights(file_path):
         if start - last_end < min_spacing:
             continue
 
-        # Scoring
         loudness = seg.get('avg_logprob', -10)
         keywords = ["no way", "omg", "wtf", "insane", "let's go", "crazy", "bro", "dude"]
         keyword_score = sum(k in text for k in keywords)
@@ -48,6 +71,7 @@ def detect_highlights(file_path):
         seen_texts.add(text)
         last_end = end
 
-    # Sort by score and return top 5 regardless of threshold
     highlights = sorted(highlights, key=lambda x: x['score'], reverse=True)
+
+    # Always return top 5, even if they’re weak
     return highlights[:5]

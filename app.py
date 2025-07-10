@@ -12,7 +12,7 @@ import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from backend.highlight_detector import transcribe, detect_highlights
+from backend.highlight_detector import detect_highlights
 from backend.clipper import cut_clip, stitch_clips
 from backend.vod_downloader import download_vod
 import streamlit.components.v1 as components
@@ -48,8 +48,9 @@ if temp_path:
     st.info("Transcribing and detecting highlights...")
 
     progress_bar = st.progress(0.0)
-    segments = transcribe(temp_path, update_callback=lambda pct: progress_bar.progress(pct * 0.5))
-    highlights = detect_highlights(segments, update_callback=lambda pct: progress_bar.progress(0.5 + pct * 0.5))
+    segments = detect_highlights(temp_path, update_callback=lambda pct: progress_bar.progress(pct * 0.5))
+    highlights = detect_highlights(temp_path, update_callback=lambda pct: progress_bar.progress(pct))
+
     progress_bar.progress(1.0)
 
     if not highlights:
