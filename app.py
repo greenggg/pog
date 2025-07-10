@@ -16,18 +16,22 @@ password = st.text_input("Enter password to continue", type="password")
 if password != st.secrets["access_password"]:
     st.stop()
 
+# Add backend folder to sys path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+# Imports
 from backend.highlight_detector import detect_highlights
 from backend.clipper import cut_clip, stitch_clips
 from backend.vod_downloader import download_vod
 
+# App setup
 st.set_page_config(page_title="PogClips", layout="centered")
 st.title("🎥 PogClips")
 
 input_mode = st.radio("Select Input Method", ["Upload Clip", "Twitch VOD Link"])
 temp_path = None
 
+# Input handling
 if input_mode == "Upload Clip":
     uploaded = st.file_uploader("Upload Stream Clip (.mp4)", type=["mp4"])
     if uploaded:
@@ -48,9 +52,11 @@ elif input_mode == "Twitch VOD Link":
             else:
                 st.error(f"Download failed: {e}")
 
+# Main logic
 if temp_path:
     st.info("Transcribing and detecting highlights...")
     progress_bar = st.progress(0.0)
+
     segments = detect_highlights(temp_path, update_callback=lambda pct: progress_bar.progress(pct * 0.5))
     highlights = detect_highlights(temp_path, update_callback=lambda pct: progress_bar.progress(pct))
     progress_bar.progress(1.0)
@@ -78,15 +84,15 @@ if temp_path:
 
         st.info("Stitching top highlights into a reel...")
         try:
-            final_reel = stitch_clips(clips)
-            final_path = os.path.join("output", "highlight_reel.mp4")
+            final_reel_path = os.path.join("output", "highlight_reel.mp4")
+            stitch_clips(clips, output_path=final_reel_path)
 
-            if os.path.exists(final_path):
+            if os.path.exists(final_reel_path):
                 def load_video_base64(video_path):
                     with open(video_path, "rb") as f:
                         return base64.b64encode(f.read()).decode()
 
-                video_base64 = load_video_base64(final_path)
+                video_base64 = load_video_base64(final_reel_path)
                 highlight_starts = [h["start"] for h in highlights]
 
                 components.html(f"""
