@@ -9,7 +9,7 @@ import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from backend.highlight_detector import transcribe, highlights
+from backend.highlight_detector import transcribe, detect_highlights
 from backend.clipper import cut_clip, stitch_clips
 from backend.vod_downloader import download_vod
 import streamlit.components.v1 as components
