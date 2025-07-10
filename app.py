@@ -54,12 +54,22 @@ if temp_path:
     else:
         st.success(f"{len(highlights)} highlight(s) found!")
 
+        import moviepy.editor as mp
+
+        video = mp.VideoFileClip(temp_path)
+        video_duration = video.duration
+        video.close()
+
         clips = []
+        PADDING_BEFORE = 1.5
+        PADDING_AFTER = 1.5
+
         for i, h in enumerate(highlights):
-            start = h["start"]
-            end = h["end"]
-            st.markdown(f"**Clip {i+1}**: `{start:.2f}s → {end:.2f}s` – *{h['text']}*")
-            out_path = f"clip_{i+1}.mp4"
+            start = max(h["start"] - PADDING_BEFORE, 0)
+            end = min(h["end"] + PADDING_AFTER, video_duration)
+
+            st.markdown(f"**Clip {i + 1}**: `{start:.2f}s → {end:.2f}s` – *{h['text']}*")
+            out_path = f"clip_{i + 1}.mp4"
             cut_clip(temp_path, start, end, out_path)
             clips.append(out_path)
 

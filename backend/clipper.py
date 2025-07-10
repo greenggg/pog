@@ -2,6 +2,10 @@ import ffmpeg
 import subprocess
 import os
 
+import sys
+print(sys.executable)
+print(sys.path)
+
 def cut_clip(input_file, start, end, output_file):
     (
         ffmpeg
@@ -10,17 +14,21 @@ def cut_clip(input_file, start, end, output_file):
         .run(overwrite_output=True)
     )
 
-def stitch_clips(clips, output_file="highlight_reel.mp4"):
-    list_file = "clip_list.txt"
+from moviepy.editor import VideoFileClip, concatenate_videoclips
 
-    with open(list_file, "w") as f:
-        for clip in clips:
-            f.write(f"file '{clip}'\n")
+def stitch_clips(clip_paths, output_path="highlight_reel.mp4"):
+    clips = []
+    for path in clip_paths:
+        clip = VideoFileClip(path)
+        # Apply fade in/out
+        faded = clip.fadein(0.5).fadeout(0.5)
+        clips.append(faded)
 
-    subprocess.run([
-        "ffmpeg", "-y", "-f", "concat", "-safe", "0",
-        "-i", list_file, "-c", "copy", output_file
-    ], check=True)
+    if not clips:
+        raise ValueError("No clips to stitch")
 
-    os.remove(list_file)
-    return output_file
+    final = concatenate_videoclips(clips, method="compose")
+    final.write_videofile(output_path, codec="libx264", audio_codec="aac", fps=30)
+
+    return output_path
+
