@@ -4,9 +4,12 @@ model = whisper.load_model("base")
 
 def transcribe(file_path, update_callback=None):
     result = model.transcribe(file_path)
-    segments = result['segments']
-    highlights = []
+    if update_callback:
+        update_callback(50)  # Halfway done
+    return result['segments']
 
+def detect_highlights(segments, update_callback=None):
+    highlights = []
     seen_texts = set()
     last_end = 0
 
@@ -14,14 +17,13 @@ def transcribe(file_path, update_callback=None):
     skip_initial = 60    # Skip first 60 seconds (usually "starting soon")
     min_length = 3       # Min length of a segment
     banned_phrases = ["starting soon", "welcome", "music", "waiting", "subscribe"]
+    keywords = ["no way", "omg", "wtf", "insane", "let's go", "crazy", "bro", "dude"]
 
-    total = len(segments)
     for i, seg in enumerate(segments):
         start = seg['start']
         end = seg['end']
         text = seg['text'].strip().lower()
 
-        # Basic filters
         if start < skip_initial:
             continue
         if (end - start) < min_length:
@@ -33,9 +35,7 @@ def transcribe(file_path, update_callback=None):
         if start - last_end < min_spacing:
             continue
 
-        # Scoring
         loudness = seg.get('avg_logprob', -10)
-        keywords = ["no way", "omg", "wtf", "insane", "let's go", "crazy", "bro", "dude"]
         keyword_score = sum(k in text for k in keywords)
         score = keyword_score + max(0, loudness + 5)
 
@@ -49,9 +49,8 @@ def transcribe(file_path, update_callback=None):
             seen_texts.add(text)
             last_end = end
 
-        # Report progress
         if update_callback:
-            update_callback(int((i + 1) / total * 100))
+            update_callback(100 * (i + 1) / len(segments))
 
     highlights = sorted(highlights, key=lambda x: x['score'], reverse=True)
     return highlights[:5]
