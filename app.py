@@ -1,7 +1,7 @@
 
 import streamlit as st
 import imageio
-imageio.plugins.ffmpeg.download()  # only required for older moviepy installs
+
 
 
 password = st.text_input("Enter password to continue", type="password")
