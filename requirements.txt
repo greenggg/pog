@@ -4,3 +4,4 @@ numpy
 ffmpeg-python
 transformers
 yt-dlp
+moviepy
