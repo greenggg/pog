@@ -11,7 +11,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import streamlit as st
 from backend.highlight_detector import transcribe
-from backend.highlight_detector import detect_highlights
+
 from backend.clipper import cut_clip, stitch_clips
 from backend.vod_downloader import download_vod
 import streamlit.components.v1 as components
