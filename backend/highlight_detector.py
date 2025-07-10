@@ -5,7 +5,7 @@ model = whisper.load_model("base")
 def transcribe(file_path, update_callback=None):
     result = model.transcribe(file_path)
     if update_callback:
-        update_callback(50)  # Halfway done
+        update_callback(0.5)  # Rough midpoint, adjust as needed
     return result['segments']
 
 def detect_highlights(segments, update_callback=None):
@@ -13,29 +13,25 @@ def detect_highlights(segments, update_callback=None):
     seen_texts = set()
     last_end = 0
 
-    min_spacing = 30     # Seconds between highlights
-    skip_initial = 60    # Skip first 60 seconds (usually "starting soon")
-    min_length = 3       # Min length of a segment
+    min_spacing = 30
+    skip_initial = 60
+    min_length = 3
     banned_phrases = ["starting soon", "welcome", "music", "waiting", "subscribe"]
-    keywords = ["no way", "omg", "wtf", "insane", "let's go", "crazy", "bro", "dude"]
 
     for i, seg in enumerate(segments):
         start = seg['start']
         end = seg['end']
         text = seg['text'].strip().lower()
 
-        if start < skip_initial:
-            continue
-        if (end - start) < min_length:
+        if start < skip_initial or (end - start) < min_length:
             continue
         if any(phrase in text for phrase in banned_phrases):
             continue
-        if text in seen_texts:
-            continue
-        if start - last_end < min_spacing:
+        if text in seen_texts or (start - last_end) < min_spacing:
             continue
 
         loudness = seg.get('avg_logprob', -10)
+        keywords = ["no way", "omg", "wtf", "insane", "let's go", "crazy", "bro", "dude"]
         keyword_score = sum(k in text for k in keywords)
         score = keyword_score + max(0, loudness + 5)
 
@@ -50,8 +46,7 @@ def detect_highlights(segments, update_callback=None):
             last_end = end
 
         if update_callback:
-            update_callback(int(100 * (i + 1) / len(segments)))
-
+            update_callback((i + 1) / len(segments))  # Fractional progress
 
     highlights = sorted(highlights, key=lambda x: x['score'], reverse=True)
     return highlights[:5]

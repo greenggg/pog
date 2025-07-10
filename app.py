@@ -44,12 +44,10 @@ elif input_mode == "Twitch VOD Link":
 if temp_path:
     st.info("Transcribing and detecting highlights...")
 
-    progress_bar = st.progress(0)
-    segments = transcribe(temp_path, update_callback=lambda pct: progress_bar.progress(pct))
-    progress_bar.progress(50)
-    highlights = detect_highlights(segments, update_callback=lambda pct: progress_bar.progress(50 + pct / 2))
-
-    progress_bar.progress(100)
+    progress_bar = st.progress(0.0)
+    segments = transcribe(temp_path, update_callback=lambda pct: progress_bar.progress(pct * 0.5))
+    highlights = detect_highlights(segments, update_callback=lambda pct: progress_bar.progress(0.5 + pct * 0.5))
+    progress_bar.progress(1.0)
 
     if not highlights:
         st.warning("No hype moments detected 😢")
