@@ -50,7 +50,8 @@ def detect_highlights(segments, update_callback=None):
             last_end = end
 
         if update_callback:
-            update_callback(100 * (i + 1) / len(segments))
+            update_callback(int(100 * (i + 1) / len(segments)))
+
 
     highlights = sorted(highlights, key=lambda x: x['score'], reverse=True)
     return highlights[:5]
