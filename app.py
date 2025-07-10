@@ -1,17 +1,15 @@
+
 import streamlit as st
 
 password = st.text_input("Enter password to continue", type="password")
 if password != st.secrets["access_password"]:
     st.stop()
 
-
 import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-import streamlit as st
 from backend.highlight_detector import transcribe
-
 from backend.clipper import cut_clip, stitch_clips
 from backend.vod_downloader import download_vod
 import streamlit.components.v1 as components
@@ -43,10 +41,15 @@ elif input_mode == "Twitch VOD Link":
             else:
                 st.error(f"Download failed: {e}")
 
-# Transcribe, detect highlights, and stitch
 if temp_path:
     st.info("Transcribing and detecting highlights...")
-    highlights = transcribe(temp_path)
+
+    progress_bar = st.progress(0)
+    text = transcribe(temp_path, update_callback=lambda pct: progress_bar.progress(min(99, int(pct * 50))))
+    progress_bar.progress(50)
+
+    highlights = transcribe.detect_highlights(text, update_callback=lambda pct: progress_bar.progress(50 + int(pct * 49)))
+    progress_bar.progress(100)
 
     if not highlights:
         st.warning("No hype moments detected 😢")
@@ -67,7 +70,6 @@ if temp_path:
             final_reel = stitch_clips(clips)
             st.success("Highlight reel ready!")
 
-            # === Optional Highlight Navigation ===
             def load_video_base64(video_path):
                 with open(video_path, "rb") as f:
                     data = f.read()
