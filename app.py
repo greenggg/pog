@@ -1,3 +1,10 @@
+import streamlit as st
+
+password = st.text_input("Enter password to continue", type="password")
+if password != st.secrets["access_password"]:
+    st.stop()
+
+
 import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
