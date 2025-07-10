@@ -1,3 +1,10 @@
 venv/
 __pycache__/
 *.pyc
+
+uploads/
+clips/
+output/
+*.mp4
+*.webm
+*.avi

@@ -1,22 +1,26 @@
-
 import streamlit as st
 import imageio
+import os
+import sys
+import base64
+import streamlit.components.v1 as components
+from moviepy.editor import VideoFileClip
 
+# Create directories
+os.makedirs("uploads", exist_ok=True)
+os.makedirs("clips", exist_ok=True)
+os.makedirs("output", exist_ok=True)
 
-
+# Password gate
 password = st.text_input("Enter password to continue", type="password")
 if password != st.secrets["access_password"]:
     st.stop()
 
-import os
-import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from backend.highlight_detector import detect_highlights
 from backend.clipper import cut_clip, stitch_clips
 from backend.vod_downloader import download_vod
-import streamlit.components.v1 as components
-import base64
 
 st.set_page_config(page_title="PogClips", layout="centered")
 st.title("🎥 PogClips")
@@ -27,7 +31,7 @@ temp_path = None
 if input_mode == "Upload Clip":
     uploaded = st.file_uploader("Upload Stream Clip (.mp4)", type=["mp4"])
     if uploaded:
-        temp_path = "temp.mp4"
+        temp_path = os.path.join("uploads", uploaded.name)
         with open(temp_path, "wb") as f:
             f.write(uploaded.read())
 
@@ -46,11 +50,9 @@ elif input_mode == "Twitch VOD Link":
 
 if temp_path:
     st.info("Transcribing and detecting highlights...")
-
     progress_bar = st.progress(0.0)
     segments = detect_highlights(temp_path, update_callback=lambda pct: progress_bar.progress(pct * 0.5))
     highlights = detect_highlights(temp_path, update_callback=lambda pct: progress_bar.progress(pct))
-
     progress_bar.progress(1.0)
 
     if not highlights:
@@ -58,9 +60,7 @@ if temp_path:
     else:
         st.success(f"{len(highlights)} highlight(s) found!")
 
-        import moviepy.editor as mp
-
-        video = mp.VideoFileClip(temp_path)
+        video = VideoFileClip(temp_path)
         video_duration = video.duration
         video.close()
 
@@ -71,24 +71,22 @@ if temp_path:
         for i, h in enumerate(highlights):
             start = max(h["start"] - PADDING_BEFORE, 0)
             end = min(h["end"] + PADDING_AFTER, video_duration)
-
             st.markdown(f"**Clip {i + 1}**: `{start:.2f}s → {end:.2f}s` – *{h['text']}*")
-            out_path = f"clip_{i + 1}.mp4"
+            out_path = os.path.join("clips", f"clip_{i + 1}.mp4")
             cut_clip(temp_path, start, end, out_path)
             clips.append(out_path)
 
         st.info("Stitching top highlights into a reel...")
         try:
             final_reel = stitch_clips(clips)
-            st.success("Highlight reel ready!")
+            final_path = os.path.join("output", "highlight_reel.mp4")
 
-            def load_video_base64(video_path):
-                with open(video_path, "rb") as f:
-                    data = f.read()
-                    return base64.b64encode(data).decode()
+            if os.path.exists(final_path):
+                def load_video_base64(video_path):
+                    with open(video_path, "rb") as f:
+                        return base64.b64encode(f.read()).decode()
 
-            if os.path.exists("highlight_reel.mp4"):
-                video_base64 = load_video_base64("highlight_reel.mp4")
+                video_base64 = load_video_base64(final_path)
                 highlight_starts = [h["start"] for h in highlights]
 
                 components.html(f"""
@@ -102,34 +100,25 @@ if temp_path:
                     <br/>
                     <button onclick="prevHighlight()" style="margin: 10px;">⬅️ Previous Highlight</button>
                     <button onclick="nextHighlight()" style="margin: 10px;">➡️ Next Highlight</button>
-
                     <script>
                       const video = document.getElementById("highlightVideo");
                       const highlights = {highlight_starts};
                       let current = 0;
-
                       function goTo(index) {{
                         if (index >= 0 && index < highlights.length) {{
                           video.currentTime = highlights[index];
                           current = index;
                         }}
                       }}
-
                       function nextHighlight() {{
-                        if (current < highlights.length - 1) {{
-                          goTo(current + 1);
-                        }}
+                        if (current < highlights.length - 1) goTo(current + 1);
                       }}
-
                       function prevHighlight() {{
-                        if (current > 0) {{
-                          goTo(current - 1);
-                        }}
+                        if (current > 0) goTo(current - 1);
                       }}
                     </script>
                   </body>
                 </html>
                 """, height=460)
-
         except Exception as e:
             st.error(f"Reel stitching failed: {e}")
